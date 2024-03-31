@@ -333,16 +333,16 @@ void HAL_COMP_MspDeInit(COMP_HandleTypeDef* hcomp)
 }
 
 /**
-* @brief SMBUS MSP Initialization
+* @brief I2C MSP Initialization
 * This function configures the hardware resources used in this example
-* @param hsmbus: SMBUS handle pointer
+* @param hi2c: I2C handle pointer
 * @retval None
 */
-void HAL_SMBUS_MspInit(SMBUS_HandleTypeDef* hsmbus)
+void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
-  if(hsmbus->Instance==I2C1)
+  if(hi2c->Instance==I2C1)
   {
   /* USER CODE BEGIN I2C1_MspInit 0 */
 
@@ -375,7 +375,20 @@ void HAL_SMBUS_MspInit(SMBUS_HandleTypeDef* hsmbus)
 
   /* USER CODE END I2C1_MspInit 1 */
   }
-  else if(hsmbus->Instance==I2C2)
+
+}
+
+/**
+* @brief SMBUS MSP Initialization
+* This function configures the hardware resources used in this example
+* @param hsmbus: SMBUS handle pointer
+* @retval None
+*/
+void HAL_SMBUS_MspInit(SMBUS_HandleTypeDef* hsmbus)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+  if(hsmbus->Instance==I2C2)
   {
   /* USER CODE BEGIN I2C2_MspInit 0 */
 
@@ -413,14 +426,14 @@ void HAL_SMBUS_MspInit(SMBUS_HandleTypeDef* hsmbus)
 }
 
 /**
-* @brief SMBUS MSP De-Initialization
+* @brief I2C MSP De-Initialization
 * This function freeze the hardware resources used in this example
-* @param hsmbus: SMBUS handle pointer
+* @param hi2c: I2C handle pointer
 * @retval None
 */
-void HAL_SMBUS_MspDeInit(SMBUS_HandleTypeDef* hsmbus)
+void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
 {
-  if(hsmbus->Instance==I2C1)
+  if(hi2c->Instance==I2C1)
   {
   /* USER CODE BEGIN I2C1_MspDeInit 0 */
 
@@ -440,7 +453,18 @@ void HAL_SMBUS_MspDeInit(SMBUS_HandleTypeDef* hsmbus)
 
   /* USER CODE END I2C1_MspDeInit 1 */
   }
-  else if(hsmbus->Instance==I2C2)
+
+}
+
+/**
+* @brief SMBUS MSP De-Initialization
+* This function freeze the hardware resources used in this example
+* @param hsmbus: SMBUS handle pointer
+* @retval None
+*/
+void HAL_SMBUS_MspDeInit(SMBUS_HandleTypeDef* hsmbus)
+{
+  if(hsmbus->Instance==I2C2)
   {
   /* USER CODE BEGIN I2C2_MspDeInit 0 */
 

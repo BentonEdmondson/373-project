@@ -1,5 +1,5 @@
+#include <screen-defines.h>
 #include "stdio.h"
-#include "touch-defines.h"
 
 // TODO: could do the thing where you write everything to a buffer and print it at once
 
@@ -234,7 +234,7 @@ uint16_t big(uint16_t original) {
 
 // send an SPI command in the correct format
 void sendCommand(SPI_HandleTypeDef* spi, uint8_t commandByte, uint8_t *dataBytes, uint16_t numDataBytes) {
-	printf("Sending command: cmd %x, args %d\r\n", commandByte, numDataBytes);
+	//printf("Sending command: cmd %x, args %d\r\n", commandByte, numDataBytes);
 
 	// first send the command byte
 	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_12, GPIO_PIN_RESET); // pull DC low
@@ -322,7 +322,9 @@ void initialize_screen(SPI_HandleTypeDef* spi) {
 		  HAL_Delay(numArgs * 5); // numArgs is actually a delay time (5ms units)
 		}
 	}
+}
 
+void draw(SPI_HandleTypeDef* spi) {
 	printf("Sending pixels.\r\n");
 
 	const uint16_t yend = 479;

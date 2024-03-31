@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "screen.h"
 #include "stdio.h"
+#include "touch.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +49,7 @@ CAN_HandleTypeDef hcan1;
 COMP_HandleTypeDef hcomp1;
 COMP_HandleTypeDef hcomp2;
 
-SMBUS_HandleTypeDef hsmbus1;
+I2C_HandleTypeDef hi2c1;
 SMBUS_HandleTypeDef hsmbus2;
 
 UART_HandleTypeDef hlpuart1;
@@ -82,7 +83,7 @@ static void MX_ADC1_Init(void);
 static void MX_CAN1_Init(void);
 static void MX_COMP1_Init(void);
 static void MX_COMP2_Init(void);
-static void MX_I2C1_SMBUS_Init(void);
+static void MX_I2C1_Init(void);
 static void MX_I2C2_SMBUS_Init(void);
 static void MX_LPUART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
@@ -143,7 +144,7 @@ int main(void)
   MX_CAN1_Init();
   MX_COMP1_Init();
   MX_COMP2_Init();
-  MX_I2C1_SMBUS_Init();
+  MX_I2C1_Init();
   MX_I2C2_SMBUS_Init();
   MX_LPUART1_UART_Init();
   MX_USART2_UART_Init();
@@ -161,6 +162,8 @@ int main(void)
   MX_USB_OTG_FS_USB_Init();
   /* USER CODE BEGIN 2 */
   initialize_screen(&hspi1);
+  initialize_touch(&hi2c1);
+  draw(&hspi1);
 
   /* USER CODE END 2 */
 
@@ -433,7 +436,7 @@ static void MX_COMP2_Init(void)
   * @param None
   * @retval None
   */
-static void MX_I2C1_SMBUS_Init(void)
+static void MX_I2C1_Init(void)
 {
 
   /* USER CODE BEGIN I2C1_Init 0 */
@@ -443,20 +446,30 @@ static void MX_I2C1_SMBUS_Init(void)
   /* USER CODE BEGIN I2C1_Init 1 */
 
   /* USER CODE END I2C1_Init 1 */
-  hsmbus1.Instance = I2C1;
-  hsmbus1.Init.Timing = 0x00707CBB;
-  hsmbus1.Init.AnalogFilter = SMBUS_ANALOGFILTER_ENABLE;
-  hsmbus1.Init.OwnAddress1 = 2;
-  hsmbus1.Init.AddressingMode = SMBUS_ADDRESSINGMODE_7BIT;
-  hsmbus1.Init.DualAddressMode = SMBUS_DUALADDRESS_DISABLE;
-  hsmbus1.Init.OwnAddress2 = 0;
-  hsmbus1.Init.OwnAddress2Masks = SMBUS_OA2_NOMASK;
-  hsmbus1.Init.GeneralCallMode = SMBUS_GENERALCALL_DISABLE;
-  hsmbus1.Init.NoStretchMode = SMBUS_NOSTRETCH_DISABLE;
-  hsmbus1.Init.PacketErrorCheckMode = SMBUS_PEC_DISABLE;
-  hsmbus1.Init.PeripheralMode = SMBUS_PERIPHERAL_MODE_SMBUS_SLAVE;
-  hsmbus1.Init.SMBusTimeout = 0x00008186;
-  if (HAL_SMBUS_Init(&hsmbus1) != HAL_OK)
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.Timing = 0x00707CBB;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
   {
     Error_Handler();
   }
