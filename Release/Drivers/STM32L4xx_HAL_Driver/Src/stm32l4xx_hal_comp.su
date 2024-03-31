@@ -1,0 +1,12 @@
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:527:13:HAL_COMP_MspInit	0	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:259:19:HAL_COMP_Init	24	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:542:13:HAL_COMP_MspDeInit	0	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:478:19:HAL_COMP_DeInit	16	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:737:19:HAL_COMP_Start	8	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:789:19:HAL_COMP_Stop	0	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:894:19:HAL_COMP_Lock	0	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:952:10:HAL_COMP_GetOutputLevel	0	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:966:13:HAL_COMP_TriggerCallback	0	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:831:6:HAL_COMP_IRQHandler	8	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:1000:23:HAL_COMP_GetState	0	static
+../Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_comp.c:1020:10:HAL_COMP_GetError	0	static

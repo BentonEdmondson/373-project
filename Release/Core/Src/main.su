@@ -1,0 +1,9 @@
+../Core/Inc/initialize.h:114:10:big	0	static
+../Core/Inc/initialize.h:123:6:sendCommand	32	static
+../Core/Inc/initialize.h:135:6:sendFrame	32	static
+../Core/Inc/initialize.h:157:6:initialize	45080	dynamic,bounded
+../Core/Src/main.c:182:6:SystemClock_Config	104	static,ignoring_inline_asm
+../Core/Src/main.c:242:6:PeriphCommonClock_Config	160	static,ignoring_inline_asm
+../Core/Src/main.c:114:5:main	136	static,ignoring_inline_asm
+../Core/Src/main.c:1282:1:__io_putchar	16	static
+../Core/Src/main.c:1294:6:Error_Handler	0	static,ignoring_inline_asm
