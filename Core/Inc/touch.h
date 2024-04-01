@@ -54,14 +54,35 @@ void readPosition(I2C_HandleTypeDef* i2c, uint16_t *x, uint16_t *y, uint8_t *z) 
   *z = data[3];
 }
 
+// from: https://github.com/arduino/ArduinoCore-API/blob/0c853c5cded2768122fae258d42b2b4c06cdb3b1/api/Common.cpp
+uint16_t map(int32_t value, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max) {
+	return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+uint8_t within(uint16_t x, uint16_t y, uint16_t x1, uint16_t x2, uint16_t y1, uint16_t y2) {
+	return (x > x1) && (x < x2) && (y > y1) && (y < y2);
+}
+
+const uint16_t yend = 479;
+const uint16_t xend = 319;
 void touchHook(I2C_HandleTypeDef* i2c) {
-	  uint16_t x, y;
-	  uint8_t z;
-	  readPosition(i2c, &x, &y, &z);
+	writeRegister8(i2c, STMPE_INT_STA, 0xFF);
+	uint16_t x, y;
+	uint8_t z;
 
-	  writeRegister8(i2c, STMPE_INT_STA, 0xFF);
+	// clear the buffer and take the last thing from the buffer
+	while (!bufferEmpty(i2c)) {
+		readPosition(i2c, &x, &y, &z);
+	}
 
-	  printf("Got a touch: (%d, %d, %d)\r\n", x, y, z);
+	x = map(x, 3520, 750, 0, 319);
+	y = map(y, 3700, 750, 0, 479);
+
+	if (within(x, y, 25, 100, 50, yend-50)) {
+		printf("Got a touch: (%d, %d) (within the bottom button)\r\n", x, y);
+	} else if (within(x, y, 125, 200, 50, yend-50)) {
+		printf("Got a touch: (%d, %d) (within the top button)\r\n", x, y);
+	}
 }
 
 void initialize_touch(I2C_HandleTypeDef* i2c) {
