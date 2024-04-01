@@ -6,23 +6,76 @@
 
 void writeRegister8(I2C_HandleTypeDef* i2c, uint8_t reg, uint8_t value){
 	uint8_t buffer[2] = {reg, value};
-	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(i2c, STMPE_ADDR << 1, buffer, 2, 10000);
+	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(i2c, STMPE_ADDR << 1, buffer, 2, 1000);
 	if (status != HAL_OK) {
 		printf("I2C write to STMPE failed with %d.\r\n", status);
 	}
 }
 
 uint8_t readRegister8(I2C_HandleTypeDef* i2c, uint8_t reg) {
-	uint8_t buffer[1] = {reg};
-	HAL_StatusTypeDef status = HAL_I2C_Master_Receive(i2c, (STMPE_ADDR << 1) | 1, buffer, 1, 10000);
+	// problem is don't know what restart is
+	// You are supposed to i2c write the address, then do an empty i2c read
+	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit(i2c, STMPE_ADDR << 1, &reg, 1, 1000);
+	if (status != HAL_OK) {
+		printf("I2C write (for the purpose of reading) to STMPE failed with %d.\r\n", status);
+	}
+
+	uint8_t result = 0;
+	// TODO: maybe the byte value here should be 1
+	status = HAL_I2C_Master_Receive(i2c, (STMPE_ADDR << 1) | 1, &result, 1, 1000);
 	if (status != HAL_OK) {
 		printf("I2C read from STMPE failed with %d.\r\n", status);
+		return 0;
 	}
-	return *buffer;
+	return result;
+}
+
+// 1 is true, 0 is false
+uint8_t touched(I2C_HandleTypeDef* i2c) {
+	return readRegister8(i2c, STMPE_TSC_CTRL) & 0x80;
+}
+
+uint8_t bufferEmpty(I2C_HandleTypeDef* i2c) {
+	return (readRegister8(i2c, STMPE_FIFO_STA) & STMPE_FIFO_STA_EMPTY);
+}
+
+void readPosition(I2C_HandleTypeDef* i2c, uint16_t *x, uint16_t *y, uint8_t *z) {
+  uint8_t data[4];
+
+  for (uint8_t i = 0; i < 4; i++) {
+    data[i] = readRegister8(i2c, 0xD7);
+  }
+  *x = data[0];
+  *x <<= 4;
+  *x |= (data[1] >> 4);
+  *y = data[1] & 0x0F;
+  *y <<= 8;
+  *y |= data[2];
+  *z = data[3];
+}
+
+void touchHook(I2C_HandleTypeDef* i2c) {
+	  uint16_t x, y;
+	  uint8_t z;
+	  readPosition(i2c, &x, &y, &z);
+
+	  writeRegister8(i2c, STMPE_INT_STA, 0xFF);
+
+	  printf("Got a touch: (%d, %d, %d)\r\n", x, y, z);
 }
 
 void initialize_touch(I2C_HandleTypeDef* i2c) {
 	// TODO: only thing I can think of is that you need to read the version here for some reason
+	// the problem is that I need to do some sort of request response thing, for read
+	// it is a write then request
+
+	printf("Initializing touch.\r\n");
+
+	  uint16_t v;
+	  v = readRegister8(i2c, 0);
+	  v <<= 8;
+	  v |= readRegister8(i2c, 1);
+	  printf("STMPE version is 0x%x\r\n", v);
 
 	  writeRegister8(i2c, STMPE_SYS_CTRL1, STMPE_SYS_CTRL1_RESET);
 
@@ -50,10 +103,27 @@ void initialize_touch(I2C_HandleTypeDef* i2c) {
 	  writeRegister8(i2c, STMPE_TSC_I_DRIVE, STMPE_TSC_I_DRIVE_50MA);
 	  writeRegister8(i2c, STMPE_INT_STA, 0xFF); // reset all ints
 	  writeRegister8(i2c, STMPE_INT_CTRL,
-	                 STMPE_INT_CTRL_POL_HIGH | STMPE_INT_CTRL_ENABLE);
+	                 STMPE_INT_CTRL_POL_LOW | STMPE_INT_CTRL_EDGE | STMPE_INT_CTRL_ENABLE);
 
 	  printf("Finished touch setup.\r\n");
 
-	  if (readRegister8(i2c, STMPE_TSC_CTRL) & 0x80) printf("experienced touch");
-	  else printf("did not receive touch");
+//	  while (1) {
+//		  uint8_t interrupt = readRegister8(i2c, 0x0A);
+//		  printf("Interrupt enables: 0x%x\r\n", interrupt);
+//		  if (touched(i2c)) {
+//			  //while (!bufferEmpty(i2c)) {
+//				  uint16_t x, y;
+//				  uint8_t z;
+//				  readPosition(i2c, &x, &y, &z);
+//				  //printf("yes touch: (%d, %d, %d)\r", x, y, z);
+//			  //}
+//			  writeRegister8(i2c, STMPE_INT_STA, 0xFF);
+//		  } else {
+//			  uint16_t x, y;
+//			  uint8_t z;
+//			  readPosition(i2c, &x, &y, &z);
+//			  //printf("yes touch: (%d, %d, %d)\r", x, y, z);
+//			  //printf("no  touch: \r");
+//		  }
+//	  }
 }

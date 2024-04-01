@@ -303,6 +303,7 @@ void initialize_screen(SPI_HandleTypeDef* spi) {
 
 	// hardware reset the display
 	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_RESET);
+	HAL_Delay(250);
 	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET);
 
 	uint8_t *addr = initd;
@@ -331,8 +332,7 @@ void draw(SPI_HandleTypeDef* spi) {
 	const uint16_t xend = 319;
 
 	// use https://rgbcolorpicker.com/565 to find pixel values
-	sendBlock(spi, 0, xend, 0, yend, 0x4208); // set the background to grey
-	sendBlock(spi, 1, xend-1, 1, yend-1, 0);
+	sendBlock(spi, 0, xend, 0, yend, 0);
 	sendBlock(spi, 25, 25+75, 50, yend-50, 0x2dab);
 	sendBlock(spi, 25+75+25, 25+75+25+75, 50, yend-50, 0x2dab);
 
