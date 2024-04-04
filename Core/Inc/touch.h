@@ -82,6 +82,8 @@ void touchHook(I2C_HandleTypeDef* i2c) {
 		printf("Got a touch: (%d, %d) (within the bottom button)\r\n", x, y);
 	} else if (within(x, y, 125, 200, 50, yend-50)) {
 		printf("Got a touch: (%d, %d) (within the top button)\r\n", x, y);
+	} else {
+		//printf("Touched nothing.\r\n");
 	}
 }
 
@@ -100,7 +102,7 @@ void initialize_touch(I2C_HandleTypeDef* i2c) {
 
 	  writeRegister8(i2c, STMPE_SYS_CTRL1, STMPE_SYS_CTRL1_RESET);
 
-	  HAL_Delay(10);
+	  HAL_Delay(100);
 
 	  for (uint8_t i = 0; i < 65; i++) {
 	    readRegister8(i2c, i);

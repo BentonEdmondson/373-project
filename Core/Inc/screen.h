@@ -336,8 +336,8 @@ void draw(SPI_HandleTypeDef* spi) {
 	sendBlock(spi, 25, 25+75, 50, yend-50, 0x2dab);
 	sendBlock(spi, 25+75+25, 25+75+25+75, 50, yend-50, 0x2dab);
 
-	sendString(spi, xend-70, 20, "Delivering for?", 0xffff, 5, 5);
-	sendString(spi, 25+75+25 + 10, 50 + 10, "B. Obama", 0x0, 5, 5);
+	sendString(spi, xend-70, 20, "Delivering for?", 0xffff, 2, 2);
+	sendString(spi, 25+75+25 + 10, 50 + 10, "B. Obama", 0x0, 2, 2);
 	sendString(spi, 25 + 10, 50 + 10, "Benton E.", 0x0, 5, 5);
 	//sendBlock(spi, 0, 0, 0, 0, 0x17e0);
 	//sendBlock(spi, xend, xend, yend, yend, 0xf880);

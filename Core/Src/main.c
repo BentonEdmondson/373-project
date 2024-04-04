@@ -1,28 +1,31 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "screen.h"
 #include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+#include "foodorder.h"
+#include "screen.h"
 #include "touch.h"
 /* USER CODE END Includes */
 
@@ -33,7 +36,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define RX_BUFFER_SIZE 256
+#define MAX_FOOD_ORDERS 5
+#define SENSOR_ADDR 0x0C << 1 // Shift left for the HAL library
+#define READ_LEN 2            // Start by reading the 16-bit content length
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,7 +54,7 @@ COMP_HandleTypeDef hcomp1;
 COMP_HandleTypeDef hcomp2;
 
 I2C_HandleTypeDef hi2c1;
-SMBUS_HandleTypeDef hsmbus2;
+I2C_HandleTypeDef hi2c2;
 
 UART_HandleTypeDef hlpuart1;
 UART_HandleTypeDef huart2;
@@ -68,7 +74,10 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim15;
 
 /* USER CODE BEGIN PV */
-
+char rxBuffer[RX_BUFFER_SIZE];
+FoodOrder foodOrders[MAX_FOOD_ORDERS];
+volatile uint16_t rxIndex = 0;
+uint32_t i = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -79,7 +88,6 @@ static void MX_ADC1_Init(void);
 static void MX_COMP1_Init(void);
 static void MX_COMP2_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_I2C2_SMBUS_Init(void);
 static void MX_LPUART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
@@ -93,14 +101,116 @@ static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM15_Init(void);
 static void MX_USB_OTG_FS_USB_Init(void);
+static void MX_I2C2_Init(void);
 /* USER CODE BEGIN PFP */
-
+void processReceivedData(char *data);
+static void uartSend(char *str);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	touchHook(&hi2c1);
+void readTinyCodeData(void)
+{
+  uint8_t readBuffer[256]; // Buffer to store the read data
+  uint16_t contentLength = 0;
+
+  // First, read the content length
+  HAL_StatusTypeDef status = HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDR, readBuffer, READ_LEN, HAL_MAX_DELAY);
+  if (status != HAL_OK)
+  {
+    // Handle communication error
+  }
+  else
+  {
+    // If read is successful, parse the content length
+    contentLength = readBuffer[0] | (readBuffer[1] << 8);
+    if (contentLength == 0)
+    {
+      return;
+    }
+    printf("content length %d\n", contentLength);
+    if (contentLength > 0 && contentLength <= 254)
+    {
+      // Now, read the actual content based on the content length
+      status = HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDR, readBuffer, contentLength + 2, HAL_MAX_DELAY);
+      if (status != HAL_OK)
+      {
+        // Handle communication error
+      }
+      else
+      {
+        // Data is now in readBuffer[2] to readBuffer[contentLength+1], process it as needed
+        // Remember to handle non-UTF-8 or other data safely
+        for (int i = 0; i < contentLength; ++i)
+        {
+          printf("%c", readBuffer[2 + i]);
+        }
+        printf("\n");
+      }
+    }
+    else
+    {
+      // No content or content length invalid
+    }
+  }
+}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  	if(htim->Instance == TIM1){
+  		  uartSend("LIST\n");
+  		  HAL_UART_Receive_IT(&huart3, (uint8_t*)&rxBuffer[rxIndex], 1);
+  	}
+}
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART3)
+  {
+    ++i;
+  }
+}
+
+void processReceivedData(char *data)
+{
+  int totalOrders = atoi(data);
+  data += 3;
+  int processedOrders = 0;
+  if (totalOrders == 0)
+  {
+    return;
+  }
+  for (int i = 0; i < MAX_FOOD_ORDERS; ++i)
+  {
+    FoodOrder_Init(&foodOrders[i]);
+  }
+  while (processedOrders < totalOrders)
+  {
+    foodOrders[processedOrders].id = atoi(data);
+    data += 11;
+    strcpy(foodOrders[processedOrders].name, data);
+    while (*data != '\0')
+    {
+      ++data;
+    }
+    ++data;
+    foodOrders[processedOrders].valid = 1;
+    ++processedOrders;
+  }
+  for (int i = 0; i < processedOrders; ++i)
+  {
+    printf("Name: %s\r\n", foodOrders[i].name);
+    printf("id: %d\r\n", foodOrders[i].id);
+  }
+}
+static void uartSend(char *str)
+{
+	HAL_StatusTypeDef result = HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), 1000);
+  if (HAL_OK != result) {
+	  printf("USART send failed with code %d.\r\n", result);
+  }
+}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  touchHook(&hi2c1);
 }
 /* USER CODE END 0 */
 
@@ -112,7 +222,10 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  for (int i = 0; i < MAX_FOOD_ORDERS; ++i)
+  {
+    FoodOrder_Init(&foodOrders[i]);
+  }
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -140,7 +253,6 @@ int main(void)
   MX_COMP1_Init();
   MX_COMP2_Init();
   MX_I2C1_Init();
-  MX_I2C2_SMBUS_Init();
   MX_LPUART1_UART_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
@@ -154,7 +266,9 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM15_Init();
   MX_USB_OTG_FS_USB_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim1);
   initialize_screen(&hspi1);
   draw(&hspi1);
   initialize_touch(&hi2c1);
@@ -166,9 +280,35 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    while (i > 0)
+    {
+      //		  printf("%c", rxBuffer[rxIndex]);
+      if (rxBuffer[rxIndex] == '\n' || rxIndex >= RX_BUFFER_SIZE - 1 || rxBuffer[rxIndex] == '\r')
+      {
+        // Null-terminate the string
+        rxBuffer[rxIndex] = '\0';
+
+        // Process received data
+        processReceivedData(rxBuffer);
+
+        // Reset index
+        rxIndex = 0;
+      }
+      else
+      {
+        // Increment index to receive the next byte
+        rxIndex++;
+      }
+      // Prepare to receive the next byte
+      HAL_UART_Receive_IT(&huart3, (uint8_t *)&rxBuffer[rxIndex], 1);
+
+      --i;
+    }
+    //readTinyCodeData();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
   }
   /* USER CODE END 3 */
 }
@@ -251,7 +391,7 @@ void PeriphCommonClock_Config(void)
   PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLLSAI1;
   PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
   PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
-  PeriphClkInit.PLLSAI1.PLLSAI1N = 16;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 24;
   PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV2;
   PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
   PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
@@ -442,7 +582,7 @@ static void MX_I2C1_Init(void)
   * @param None
   * @retval None
   */
-static void MX_I2C2_SMBUS_Init(void)
+static void MX_I2C2_Init(void)
 {
 
   /* USER CODE BEGIN I2C2_Init 0 */
@@ -452,27 +592,30 @@ static void MX_I2C2_SMBUS_Init(void)
   /* USER CODE BEGIN I2C2_Init 1 */
 
   /* USER CODE END I2C2_Init 1 */
-  hsmbus2.Instance = I2C2;
-  hsmbus2.Init.Timing = 0x307075B1;
-  hsmbus2.Init.AnalogFilter = SMBUS_ANALOGFILTER_ENABLE;
-  hsmbus2.Init.OwnAddress1 = 2;
-  hsmbus2.Init.AddressingMode = SMBUS_ADDRESSINGMODE_7BIT;
-  hsmbus2.Init.DualAddressMode = SMBUS_DUALADDRESS_DISABLE;
-  hsmbus2.Init.OwnAddress2 = 0;
-  hsmbus2.Init.OwnAddress2Masks = SMBUS_OA2_NOMASK;
-  hsmbus2.Init.GeneralCallMode = SMBUS_GENERALCALL_DISABLE;
-  hsmbus2.Init.NoStretchMode = SMBUS_NOSTRETCH_DISABLE;
-  hsmbus2.Init.PacketErrorCheckMode = SMBUS_PEC_DISABLE;
-  hsmbus2.Init.PeripheralMode = SMBUS_PERIPHERAL_MODE_SMBUS_SLAVE;
-  hsmbus2.Init.SMBusTimeout = 0x000085B8;
-  if (HAL_SMBUS_Init(&hsmbus2) != HAL_OK)
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.Timing = 0x307075B1;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
   {
     Error_Handler();
   }
 
-  /** configuration Alert Mode
+  /** Configure Analogue filter
   */
-  if (HAL_SMBUS_EnableAlert_IT(&hsmbus2) != HAL_OK)
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
   {
     Error_Handler();
   }
@@ -594,7 +737,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 115200;
+  huart3.Init.BaudRate = 9600;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -770,7 +913,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -839,6 +982,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 0 */
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIMEx_BreakInputConfigTypeDef sBreakInputConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
@@ -848,12 +992,21 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 0;
+  htim1.Init.Prescaler = 27000;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 65535;
+  htim1.Init.Period = 39999;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
@@ -1200,16 +1353,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PC8 PC9 PC10 PC11
-                           PC12 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
-                          |GPIO_PIN_12;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF12_SDMMC1;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
   /*Configure GPIO pins : PA8 PA10 PA11 PA12 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -1224,22 +1367,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PD0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PD2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF12_SDMMC1;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
@@ -1252,7 +1379,7 @@ static void MX_GPIO_Init(void)
 #ifdef __GNUC__
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
 #else
-  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
 #endif /* __GNUC__ */
 PUTCHAR_PROTOTYPE
 {
