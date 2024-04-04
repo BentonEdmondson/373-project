@@ -115,7 +115,7 @@ void readTinyCodeData(void)
   uint16_t contentLength = 0;
 
   // First, read the content length
-  HAL_StatusTypeDef status = HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDR, readBuffer, READ_LEN, HAL_MAX_DELAY);
+  HAL_StatusTypeDef status = HAL_I2C_Master_Receive(&hi2c2, SENSOR_ADDR, readBuffer, READ_LEN, HAL_MAX_DELAY);
   if (status != HAL_OK)
   {
     // Handle communication error
@@ -124,7 +124,7 @@ void readTinyCodeData(void)
   {
     // If read is successful, parse the content length
     contentLength = readBuffer[0] | (readBuffer[1] << 8);
-    if (contentLength == 0)
+    if (contentLength == 0 ||  contentLength > 254)
     {
       return;
     }
@@ -132,7 +132,7 @@ void readTinyCodeData(void)
     if (contentLength > 0 && contentLength <= 254)
     {
       // Now, read the actual content based on the content length
-      status = HAL_I2C_Master_Receive(&hi2c1, SENSOR_ADDR, readBuffer, contentLength + 2, HAL_MAX_DELAY);
+      status = HAL_I2C_Master_Receive(&hi2c2, SENSOR_ADDR, readBuffer, contentLength + 2, HAL_MAX_DELAY);
       if (status != HAL_OK)
       {
         // Handle communication error
@@ -304,7 +304,7 @@ int main(void)
 
       --i;
     }
-    //readTinyCodeData();
+    readTinyCodeData();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

@@ -15,7 +15,7 @@
 ../Core/Inc/touch.h:62:9:within	5
 ../Core/Inc/touch.h:68:6:touchHook	4
 ../Core/Inc/touch.h:90:6:initialize_touch	2
-../Core/Src/main.c:112:6:readTinyCodeData	7
+../Core/Src/main.c:112:6:readTinyCodeData	8
 ../Core/Src/main.c:157:6:HAL_TIM_PeriodElapsedCallback	2
 ../Core/Src/main.c:164:6:HAL_UART_RxCpltCallback	2
 ../Core/Src/main.c:172:6:processReceivedData	6
